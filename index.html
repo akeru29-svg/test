@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>そろばん学習ソフト</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: #f5f0e8;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      background: #8b4513;
+      color: #fff;
+      width: 100%;
+      text-align: center;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    header h1 { font-size: 1.6rem; letter-spacing: 0.1em; }
+
+    .app-container {
+      max-width: 800px;
+      width: 100%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    /* そろばん表示エリア */
+    .abacus-wrapper {
+      background: #d2a55a;
+      border: 6px solid #6b3410;
+      border-radius: 12px;
+      padding: 10px 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    .abacus-value-display {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: bold;
+      color: #4a2600;
+      margin-bottom: 4px;
+      min-height: 2.4rem;
+      letter-spacing: 0.15em;
+    }
+
+    svg.abacus {
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* ボタン群 */
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      font-size: 1rem;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    button:active { transform: scale(0.96); }
+
+    .btn-reset {
+      background: #c0392b;
+      color: #fff;
+    }
+
+    .btn-practice {
+      background: #27ae60;
+      color: #fff;
+    }
+
+    .btn-answer {
+      background: #2980b9;
+      color: #fff;
+    }
+
+    .btn-next {
+      background: #8e44ad;
+      color: #fff;
+    }
+
+    button:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+
+    /* 練習問題エリア */
+    .practice-area {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      display: none;
+      text-align: center;
+    }
+
+    .practice-area.active { display: block; }
+
+    .question {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-bottom: 16px;
+    }
+
+    .hint {
+      font-size: 0.95rem;
+      color: #777;
+      margin-bottom: 12px;
+    }
+
+    .result {
+      font-size: 1.4rem;
+      font-weight: bold;
+      margin-top: 12px;
+      min-height: 2rem;
+    }
+
+    .result.correct { color: #27ae60; }
+    .result.wrong { color: #c0392b; }
+
+    /* 統計 */
+    .stats {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      font-size: 1.1rem;
+      color: #555;
+    }
+
+    .stats span { font-weight: bold; color: #2c3e50; }
+
+    /* モード選択 */
+    .mode-select {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .mode-select button {
+      background: #ecf0f1;
+      color: #2c3e50;
+      border: 2px solid transparent;
+    }
+
+    .mode-select button.active {
+      border-color: #2980b9;
+      background: #d6eaf8;
+    }
+
+    /* 使い方 */
+    .instructions {
+      background: #fff9ee;
+      border: 1px solid #e0d5c0;
+      border-radius: 10px;
+      padding: 16px 20px;
+      width: 100%;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: #555;
+    }
+
+    .instructions h3 {
+      color: #8b4513;
+      margin-bottom: 8px;
+    }
+
+    /* SVG beads */
+    .bead { cursor: pointer; }
+    .bead:hover { filter: brightness(1.15); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>そろばん学習ソフト</h1>
+</header>
+
+<div class="app-container">
+  <!-- そろばん -->
+  <div class="abacus-wrapper">
+    <div class="abacus-value-display" id="abacusValue">0</div>
+    <svg class="abacus" id="abacusSvg"></svg>
+  </div>
+
+  <!-- 操作ボタン -->
+  <div class="controls">
+    <button class="btn-reset" onclick="resetAbacus()">リセット</button>
+    <button class="btn-practice" onclick="togglePractice()">練習モード</button>
+  </div>
+
+  <!-- 練習問題 -->
+  <div class="practice-area" id="practiceArea">
+    <div class="mode-select">
+      <button class="active" onclick="setMode('addition')" id="modeAdd">たし算</button>
+      <button onclick="setMode('subtraction')" id="modeSub">ひき算</button>
+      <button onclick="setMode('mixed')" id="modeMix">ミックス</button>
+    </div>
+    <div class="question" id="question"></div>
+    <div class="hint" id="hint"></div>
+    <div class="controls">
+      <button class="btn-answer" onclick="checkAnswer()">こたえ合わせ</button>
+      <button class="btn-next" onclick="nextQuestion()">つぎの問題</button>
+    </div>
+    <div class="result" id="result"></div>
+    <div class="stats">
+      正解: <span id="correctCount">0</span> ／ 問題数: <span id="totalCount">0</span>
+    </div>
+  </div>
+
+  <!-- 使い方 -->
+  <div class="instructions">
+    <h3>使い方</h3>
+    <p>
+      <strong>珠（たま）の動かし方：</strong>上の段の珠（五珠）をクリックすると5の位が切り替わります。下の段の珠（一珠）をクリックすると1ずつ切り替わります。<br>
+      <strong>練習モード：</strong>「練習モード」ボタンで問題を表示し、そろばんで答えを作ってから「こたえ合わせ」を押してください。
+    </p>
+  </div>
+</div>
+
+<script>
+// ===== そろばん設定 =====
+const NUM_RODS = 9;
+const ROD_SPACING = 56;
+const SVG_PADDING_X = 40;
+const SVG_WIDTH = NUM_RODS * ROD_SPACING + SVG_PADDING_X * 2;
+const SVG_HEIGHT = 280;
+const BAR_Y = 80; // 梁の位置
+const BEAD_RX = 22;
+const BEAD_RY = 14;
+const HEAVEN_BEAD_TOP = 14;
+const HEAVEN_BEAD_BOTTOM = BAR_Y - BEAD_RY - 2;
+const EARTH_BEAD_TOP_START = BAR_Y + BEAD_RY + 6;
+const EARTH_BEAD_SPACING = BEAD_RY * 2 + 4;
+
+// そろばんの状態: 各桁 { heaven: 0|1, earth: 0-4 }
+let rods = [];
+
+function initState() {
+  rods = [];
+  for (let i = 0; i < NUM_RODS; i++) {
+    rods.push({ heaven: 0, earth: 0 });
+  }
+}
+
+function getAbacusValue() {
+  let value = 0;
+  for (let i = 0; i < NUM_RODS; i++) {
+    const placeValue = Math.pow(10, NUM_RODS - 1 - i);
+    value += (rods[i].heaven * 5 + rods[i].earth) * placeValue;
+  }
+  return value;
+}
+
+function updateValueDisplay() {
+  document.getElementById('abacusValue').textContent = getAbacusValue().toLocaleString();
+}
+
+// ===== SVG描画 =====
+function rodX(i) {
+  return SVG_PADDING_X + i * ROD_SPACING + ROD_SPACING / 2;
+}
+
+function renderAbacus() {
+  const svg = document.getElementById('abacusSvg');
+  svg.setAttribute('width', SVG_WIDTH);
+  svg.setAttribute('height', SVG_HEIGHT);
+  svg.setAttribute('viewBox', `0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`);
+  svg.innerHTML = '';
+
+  // 背景
+  const bg = svgEl('rect', { x: 0, y: 0, width: SVG_WIDTH, height: SVG_HEIGHT, fill: '#d2a55a', rx: 6 });
+  svg.appendChild(bg);
+
+  // 桁ラベル（位取り点）
+  const labels = ['億','千万','百万','十万','万','千','百','十','一'];
+  for (let i = 0; i < NUM_RODS; i++) {
+    const x = rodX(i);
+    // 位取り点
+    if ((NUM_RODS - 1 - i) % 3 === 0 && i < NUM_RODS - 1) {
+      const dot = svgEl('circle', { cx: x, cy: BAR_Y, r: 3.5, fill: '#fff' });
+      svg.appendChild(dot);
+    }
+    // ラベル
+    const label = svgEl('text', {
+      x: x, y: SVG_HEIGHT - 4,
+      'text-anchor': 'middle', 'font-size': '11', fill: '#6b3410', 'font-weight': 'bold'
+    });
+    label.textContent = labels[i];
+    svg.appendChild(label);
+  }
+
+  // 桿（rod）
+  for (let i = 0; i < NUM_RODS; i++) {
+    const x = rodX(i);
+    const rod = svgEl('line', {
+      x1: x, y1: 4, x2: x, y2: SVG_HEIGHT - 18,
+      stroke: '#5a2d0c', 'stroke-width': 3, 'stroke-linecap': 'round'
+    });
+    svg.appendChild(rod);
+  }
+
+  // 梁（bar）
+  const bar = svgEl('rect', {
+    x: 4, y: BAR_Y - 6, width: SVG_WIDTH - 8, height: 12,
+    fill: '#6b3410', rx: 3
+  });
+  svg.appendChild(bar);
+
+  // 珠（beads）
+  for (let i = 0; i < NUM_RODS; i++) {
+    const x = rodX(i);
+    const rod = rods[i];
+
+    // 五珠（heaven bead）
+    const hy = rod.heaven === 1 ? HEAVEN_BEAD_BOTTOM : HEAVEN_BEAD_TOP;
+    const hBead = createBead(x, hy, '#4a2600', '#7a4a1a');
+    hBead.addEventListener('click', () => toggleHeaven(i));
+    svg.appendChild(hBead);
+
+    // 一珠（earth beads）- 4個
+    for (let j = 0; j < 4; j++) {
+      const isUp = j < rod.earth;
+      let ey;
+      if (isUp) {
+        // 梁に寄せる
+        ey = EARTH_BEAD_TOP_START + j * EARTH_BEAD_SPACING;
+      } else {
+        // 下に離す
+        const downOffset = (rod.earth > 0) ? (4 - rod.earth) * EARTH_BEAD_SPACING : 0;
+        ey = EARTH_BEAD_TOP_START + j * EARTH_BEAD_SPACING + (downOffset > 0 ? downOffset - j * 0 : 0);
+      }
+      // 再計算: 上にある珠は梁側に、下にある珠は離れる
+      if (isUp) {
+        ey = EARTH_BEAD_TOP_START + j * EARTH_BEAD_SPACING;
+      } else {
+        const gapFromActive = j - rod.earth;
+        ey = EARTH_BEAD_TOP_START + rod.earth * EARTH_BEAD_SPACING + gapFromActive * EARTH_BEAD_SPACING + 20;
+      }
+
+      const eBead = createBead(x, ey, '#4a2600', '#7a4a1a');
+      eBead.addEventListener('click', () => toggleEarth(i, j));
+      svg.appendChild(eBead);
+    }
+  }
+
+  updateValueDisplay();
+}
+
+function createBead(cx, cy, fill, stroke) {
+  const g = svgEl('g', { class: 'bead' });
+  // 影
+  const shadow = svgEl('ellipse', {
+    cx: cx + 1, cy: cy + 2, rx: BEAD_RX, ry: BEAD_RY,
+    fill: 'rgba(0,0,0,0.2)'
+  });
+  g.appendChild(shadow);
+  // 珠本体
+  const bead = svgEl('ellipse', {
+    cx, cy, rx: BEAD_RX, ry: BEAD_RY,
+    fill, stroke, 'stroke-width': 1.5
+  });
+  g.appendChild(bead);
+  // ハイライト
+  const highlight = svgEl('ellipse', {
+    cx: cx - 4, cy: cy - 4, rx: BEAD_RX * 0.5, ry: BEAD_RY * 0.4,
+    fill: 'rgba(255,255,255,0.25)'
+  });
+  g.appendChild(highlight);
+  return g;
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    el.setAttribute(k, v);
+  }
+  return el;
+}
+
+// ===== 珠の操作 =====
+function toggleHeaven(rodIndex) {
+  rods[rodIndex].heaven = rods[rodIndex].heaven === 1 ? 0 : 1;
+  renderAbacus();
+}
+
+function toggleEarth(rodIndex, beadIndex) {
+  const rod = rods[rodIndex];
+  if (beadIndex < rod.earth) {
+    // この珠とその上の珠を下げる
+    rod.earth = beadIndex;
+  } else {
+    // この珠とその下の珠を上げる
+    rod.earth = beadIndex + 1;
+  }
+  renderAbacus();
+}
+
+function resetAbacus() {
+  initState();
+  renderAbacus();
+}
+
+// ===== 数値をそろばんにセット =====
+function setAbacusValue(value) {
+  initState();
+  for (let i = NUM_RODS - 1; i >= 0; i--) {
+    const placeValue = Math.pow(10, NUM_RODS - 1 - i);
+    const digit = Math.floor(value / placeValue) % 10;
+    rods[i].heaven = digit >= 5 ? 1 : 0;
+    rods[i].earth = digit % 5;
+  }
+  renderAbacus();
+}
+
+// ===== 練習モード =====
+let practiceActive = false;
+let currentMode = 'addition';
+let correctAnswer = 0;
+let correctCount = 0;
+let totalCount = 0;
+
+function togglePractice() {
+  practiceActive = !practiceActive;
+  const area = document.getElementById('practiceArea');
+  area.classList.toggle('active', practiceActive);
+  if (practiceActive) {
+    nextQuestion();
+  }
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeAdd').classList.toggle('active', mode === 'addition');
+  document.getElementById('modeSub').classList.toggle('active', mode === 'subtraction');
+  document.getElementById('modeMix').classList.toggle('active', mode === 'mixed');
+  nextQuestion();
+}
+
+function generateQuestion() {
+  let mode = currentMode;
+  if (mode === 'mixed') {
+    mode = Math.random() < 0.5 ? 'addition' : 'subtraction';
+  }
+
+  if (mode === 'addition') {
+    const a = randInt(1, 999);
+    const b = randInt(1, 999);
+    correctAnswer = a + b;
+    return `${a} ＋ ${b} ＝ ？`;
+  } else {
+    const b = randInt(1, 499);
+    const a = randInt(b, 999);
+    correctAnswer = a - b;
+    return `${a} − ${b} ＝ ？`;
+  }
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function nextQuestion() {
+  resetAbacus();
+  const q = generateQuestion();
+  document.getElementById('question').textContent = q;
+  document.getElementById('hint').textContent = 'そろばんで答えを作ってください';
+  document.getElementById('result').textContent = '';
+  document.getElementById('result').className = 'result';
+}
+
+function checkAnswer() {
+  const userAnswer = getAbacusValue();
+  const resultEl = document.getElementById('result');
+  totalCount++;
+
+  if (userAnswer === correctAnswer) {
+    correctCount++;
+    resultEl.textContent = '⭕ 正解！ すばらしい！';
+    resultEl.className = 'result correct';
+  } else {
+    resultEl.textContent = `❌ 残念… 正解は ${correctAnswer.toLocaleString()} です`;
+    resultEl.className = 'result wrong';
+  }
+
+  document.getElementById('correctCount').textContent = correctCount;
+  document.getElementById('totalCount').textContent = totalCount;
+}
+
+// ===== 初期化 =====
+initState();
+renderAbacus();
+</script>
+
+</body>
+</html>
