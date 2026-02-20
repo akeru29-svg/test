@@ -45,7 +45,7 @@
       border-radius: 12px;
       padding: 10px 16px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-      overflow-x: auto;
+      overflow: hidden;
       width: 100%;
     }
 
@@ -62,6 +62,9 @@
     svg.abacus {
       display: block;
       margin: 0 auto;
+      width: 100%;
+      height: auto;
+      touch-action: manipulation;
     }
 
     /* ボタン群 */
@@ -208,6 +211,41 @@
     /* SVG beads */
     .bead { cursor: pointer; }
     .bead:hover { filter: brightness(1.15); }
+
+    /* スマホ対応 */
+    @media (max-width: 600px) {
+      header { padding: 12px; }
+      header h1 { font-size: 1.2rem; }
+
+      .app-container { padding: 12px; gap: 14px; }
+
+      .abacus-wrapper {
+        border-width: 4px;
+        padding: 8px 6px;
+        border-radius: 8px;
+      }
+
+      .abacus-value-display { font-size: 1.5rem; }
+
+      button {
+        font-size: 0.9rem;
+        padding: 10px 14px;
+        min-height: 44px;
+      }
+
+      .select-group button {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+        min-height: 40px;
+      }
+
+      .question { font-size: 1.4rem; }
+      .result { font-size: 1.1rem; }
+      .stats { font-size: 0.95rem; gap: 16px; }
+      .practice-area { padding: 16px 12px; }
+
+      .instructions { font-size: 0.8rem; padding: 12px 14px; }
+    }
   </style>
 </head>
 <body>
@@ -311,9 +349,10 @@ function rodX(i) {
 
 function renderAbacus() {
   const svg = document.getElementById('abacusSvg');
-  svg.setAttribute('width', SVG_WIDTH);
-  svg.setAttribute('height', SVG_HEIGHT);
+  svg.removeAttribute('width');
+  svg.removeAttribute('height');
   svg.setAttribute('viewBox', `0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   svg.innerHTML = '';
 
   // 背景
@@ -397,6 +436,12 @@ function renderAbacus() {
 
 function createBead(cx, cy, fill, stroke) {
   const g = svgEl('g', { class: 'bead' });
+  // タッチ領域（透明・大きめ）
+  const touchArea = svgEl('ellipse', {
+    cx, cy, rx: BEAD_RX + 6, ry: BEAD_RY + 6,
+    fill: 'transparent'
+  });
+  g.appendChild(touchArea);
   // 影
   const shadow = svgEl('ellipse', {
     cx: cx + 1, cy: cy + 2, rx: BEAD_RX, ry: BEAD_RY,
