@@ -153,23 +153,39 @@
 
     .stats span { font-weight: bold; color: #2c3e50; }
 
-    /* モード選択 */
-    .mode-select {
+    /* モード選択・難易度選択 */
+    .select-group {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
       justify-content: center;
+      margin-bottom: 12px;
     }
 
-    .mode-select button {
+    .select-group-label {
+      width: 100%;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #777;
+      margin-bottom: 2px;
+    }
+
+    .select-group button {
       background: #ecf0f1;
       color: #2c3e50;
       border: 2px solid transparent;
+      font-size: 0.95rem;
+      padding: 8px 16px;
     }
 
-    .mode-select button.active {
+    .select-group button.active {
       border-color: #2980b9;
       background: #d6eaf8;
+    }
+
+    .select-group.difficulty button.active {
+      border-color: #e67e22;
+      background: #fdebd0;
     }
 
     /* 使い方 */
@@ -215,10 +231,18 @@
 
   <!-- 練習問題 -->
   <div class="practice-area" id="practiceArea">
-    <div class="mode-select">
+    <div class="select-group">
+      <div class="select-group-label">演算</div>
       <button class="active" onclick="setMode('addition')" id="modeAdd">たし算</button>
       <button onclick="setMode('subtraction')" id="modeSub">ひき算</button>
       <button onclick="setMode('mixed')" id="modeMix">ミックス</button>
+    </div>
+    <div class="select-group difficulty">
+      <div class="select-group-label">難易度</div>
+      <button class="active" onclick="setDifficulty('beginner')" id="diffBeginner">入門（1桁）</button>
+      <button onclick="setDifficulty('easy')" id="diffEasy">初級（2桁）</button>
+      <button onclick="setDifficulty('medium')" id="diffMedium">中級（3桁）</button>
+      <button onclick="setDifficulty('hard')" id="diffHard">上級（4桁）</button>
     </div>
     <div class="question" id="question"></div>
     <div class="hint" id="hint"></div>
@@ -440,9 +464,18 @@ function setAbacusValue(value) {
 // ===== 練習モード =====
 let practiceActive = false;
 let currentMode = 'addition';
+let currentDifficulty = 'beginner';
 let correctAnswer = 0;
 let correctCount = 0;
 let totalCount = 0;
+
+// 難易度ごとの数値範囲
+const DIFFICULTY_RANGES = {
+  beginner: { min: 1, max: 9 },
+  easy:     { min: 10, max: 99 },
+  medium:   { min: 100, max: 999 },
+  hard:     { min: 1000, max: 9999 }
+};
 
 function togglePractice() {
   practiceActive = !practiceActive;
@@ -461,20 +494,31 @@ function setMode(mode) {
   nextQuestion();
 }
 
+function setDifficulty(diff) {
+  currentDifficulty = diff;
+  document.getElementById('diffBeginner').classList.toggle('active', diff === 'beginner');
+  document.getElementById('diffEasy').classList.toggle('active', diff === 'easy');
+  document.getElementById('diffMedium').classList.toggle('active', diff === 'medium');
+  document.getElementById('diffHard').classList.toggle('active', diff === 'hard');
+  nextQuestion();
+}
+
 function generateQuestion() {
   let mode = currentMode;
   if (mode === 'mixed') {
     mode = Math.random() < 0.5 ? 'addition' : 'subtraction';
   }
 
+  const range = DIFFICULTY_RANGES[currentDifficulty];
+
   if (mode === 'addition') {
-    const a = randInt(1, 999);
-    const b = randInt(1, 999);
+    const a = randInt(range.min, range.max);
+    const b = randInt(range.min, range.max);
     correctAnswer = a + b;
     return `${a} ＋ ${b} ＝ ？`;
   } else {
-    const b = randInt(1, 499);
-    const a = randInt(b, 999);
+    const b = randInt(range.min, Math.floor(range.max / 2));
+    const a = randInt(b + 1, range.max);
     correctAnswer = a - b;
     return `${a} − ${b} ＝ ？`;
   }
